@@ -2,17 +2,19 @@ import { useState } from 'react'
 import { rollBuddy, saveBuddy, generateSoulOffline } from '../buddy/gacha.js'
 import { RARITY_COLORS, RARITY_EMOJI } from '../buddy/data.js'
 import BuddyCard from '../components/BuddyCard.jsx'
+import ParticleReveal from '../components/ParticleReveal.jsx'
 
 const STEPS = [
-  '⠋ Rolling...', '⠙ Rolling...', '⠹ Rolling...', '⠸ Rolling...',
-  '⠼ Rolling...', '⠴ Rolling...', '⠦ Rolling...',
-  '✨ Almost...', '✨✨ Almost...', '✨✨✨ !!!',
+  '> Rolling...', '>> Rolling...', '>>> Rolling...',
+  '>>>> Rolling...', '>>>>> Rolling...',
+  '>>>>>> Rolling...', '>>>>>>> Rolling...',
+  '_ Almost...', '__ Almost...', '___ !!!',
 ]
 
 export default function RollPage({ onHatched }) {
   const [userId, setUserId]   = useState('')
   const [name,   setName]     = useState('')
-  const [phase,  setPhase]    = useState('idle')   // idle | rolling | reveal | naming | done
+  const [phase,  setPhase]    = useState('idle')
   const [step,   setStep]     = useState(0)
   const [buddy,  setBuddy]    = useState(null)
 
@@ -21,7 +23,6 @@ export default function RollPage({ onHatched }) {
     setPhase('rolling')
     setStep(0)
     const rolled = rollBuddy(userId.trim())
-    // 播放滚动动画
     for (let i = 0; i < STEPS.length; i++) {
       await new Promise(r => setTimeout(r, 200))
       setStep(i)
@@ -43,10 +44,16 @@ export default function RollPage({ onHatched }) {
   const re = buddy ? RARITY_EMOJI[buddy.rarity]  : ''
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, padding: '32px 16px' }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      gap: 24, padding: '32px 16px', minHeight: 'calc(100vh - 52px)',
+    }}>
       <div style={{ textAlign: 'center' }}>
-        <h1 style={{ color: '#22d3ee', fontFamily: "'JetBrains Mono', monospace", fontSize: '1.5rem', margin: 0 }}>
-          🎰 BUDDY GACHA
+        <h1 style={{
+          color: '#22d3ee', fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 'clamp(1.1rem, 4vw, 1.5rem)', margin: 0,
+        }}>
+          {'>>>'} BUDDY GACHA
         </h1>
         <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: 6 }}>
           相同 ID 永远得到相同的 Buddy
@@ -54,7 +61,10 @@ export default function RollPage({ onHatched }) {
       </div>
 
       {phase === 'idle' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 360 }}>
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 12,
+          width: '100%', maxWidth: 360, padding: '0 4px',
+        }}>
           <input
             placeholder="输入你的 ID（名字或邮箱）"
             value={userId}
@@ -70,7 +80,10 @@ export default function RollPage({ onHatched }) {
 
       {phase === 'rolling' && (
         <div style={{ textAlign: 'center', padding: '32px 0' }}>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", color: '#22d3ee', fontSize: '1.2rem', marginBottom: 8 }}>
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace", color: '#22d3ee',
+            fontSize: '1.2rem', marginBottom: 8,
+          }}>
             {STEPS[step]}
           </div>
           <div style={{ color: '#374151', fontSize: '0.75rem' }}>seed: {userId}</div>
@@ -78,17 +91,30 @@ export default function RollPage({ onHatched }) {
       )}
 
       {phase === 'reveal' && buddy && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, width: '100%' }}>
-          <div style={{ textAlign: 'center', animation: 'fadeIn 0.4s ease' }}>
-            <span style={{ fontSize: '2rem' }}>{re}</span>
-            <div style={{ color: rc, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '1.2rem', marginTop: 4 }}>
-              {buddy.shiny && '★ SHINY '}{buddy.rarity.toUpperCase()} {buddy.species.toUpperCase()}
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          gap: 20, width: '100%', overflow: 'hidden',
+        }}>
+          <ParticleReveal rarity={buddy.rarity} active>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ fontSize: '2rem' }}>{re}</span>
+              <div style={{
+                color: rc, fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 700, fontSize: 'clamp(1rem, 3.5vw, 1.2rem)', marginTop: 4,
+              }}>
+                {buddy.shiny && '* SHINY '}{buddy.rarity.toUpperCase()} {buddy.species.toUpperCase()}
+              </div>
             </div>
+          </ParticleReveal>
+
+          <div style={{ width: '100%', maxWidth: 480, padding: '0 4px' }}>
+            <BuddyCard buddy={buddy} name={name.trim() || userId.trim()} />
           </div>
 
-          <BuddyCard buddy={buddy} name={name.trim() || userId.trim()} />
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 360 }}>
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 10,
+            width: '100%', maxWidth: 360, padding: '0 4px',
+          }}>
             <input
               placeholder="给 Buddy 起个名字（可跳过）"
               value={name}
@@ -98,7 +124,7 @@ export default function RollPage({ onHatched }) {
               autoFocus
             />
             <button onClick={confirmName} style={btnStyle(rc)}>
-              ✓ 确认，开始冒险！
+              {'>'} 确认，开始冒险！
             </button>
             <button onClick={() => { setPhase('idle'); setBuddy(null) }}
               style={{ ...btnStyle('#374151'), background: 'transparent', color: '#6b7280' }}>

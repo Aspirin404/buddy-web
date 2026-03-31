@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { RARITY_COLORS } from '../buddy/data.js'
 import BuddyCard from '../components/BuddyCard.jsx'
 import BuddySprite from '../components/BuddySprite.jsx'
+import TypewriterBubble from '../components/TypewriterBubble.jsx'
 
 const API_KEY_STORAGE = 'buddy_api_key'
 
@@ -23,6 +24,42 @@ ${buddy.shiny ? '你是闪光个体，有一点特别的骄傲感。' : ''}
 规则：每次只回复 1-2 句话。始终保持角色，不要说自己是 AI。用第一人称，偶尔加小动作描述（用括号）。中文回复。`
 }
 
+function ChatBubble({ msg, buddy, rc, isNew }) {
+  const isUser = msg.role === 'user'
+
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: isUser ? 'row-reverse' : 'row',
+      alignItems: 'flex-end', gap: 8,
+      animation: isNew ? 'bubbleIn 0.3s ease-out' : undefined,
+    }}>
+      {!isUser && (
+        <div style={{ flexShrink: 0 }}>
+          <BuddySprite buddy={buddy} size="sm" animated={false} />
+        </div>
+      )}
+      <div style={{
+        maxWidth: 'min(72%, calc(100vw - 100px))',
+        background: isUser ? '#1e3a5f' : '#0f1117',
+        border: `1px solid ${isUser ? '#1d4ed844' : rc + '33'}`,
+        borderRadius: isUser ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+        padding: '8px 12px',
+        color: msg.isError ? '#ef4444' : '#e5e7eb',
+        fontSize: '0.88rem',
+        lineHeight: 1.6,
+        wordBreak: 'break-word',
+      }}>
+        {!isUser && isNew ? (
+          <TypewriterBubble text={msg.content} speed={35} />
+        ) : (
+          msg.content
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function ChatPage({ buddy, name }) {
   const [apiKey,   setApiKey]   = useState(() => localStorage.getItem(API_KEY_STORAGE) || '')
   const [keyInput, setKeyInput] = useState('')
@@ -30,10 +67,10 @@ export default function ChatPage({ buddy, name }) {
   const [input,    setInput]    = useState('')
   const [loading,  setLoading]  = useState(false)
   const [showCard, setShowCard] = useState(false)
+  const [lastNewId, setLastNewId] = useState(null)
   const endRef = useRef(null)
   const rc = RARITY_COLORS[buddy.rarity]
 
-  // 初始打招呼
   useEffect(() => {
     if (!apiKey) return
     if (messages.length > 0) return
@@ -54,7 +91,9 @@ export default function ChatPage({ buddy, name }) {
     if (!text.trim() || loading) return
     const userMsg = isSystem ? null : { role: 'user', content: text, id: Date.now() }
     if (!isSystem) {
-      setMessages(m => [...m, userMsg])
+      const uid = Date.now()
+      setMessages(m => [...m, { ...userMsg, id: uid }])
+      setLastNewId(uid)
       setInput('')
     }
     setLoading(true)
@@ -84,27 +123,30 @@ export default function ChatPage({ buddy, name }) {
       })
       const data = await res.json()
       const reply = data.content?.[0]?.text?.trim() || '...'
+      const replyId = Date.now()
       setMessages(m => [...m, {
         role: 'assistant', content: reply,
-        id: Date.now(), isGreeting: isSystem,
+        id: replyId, isGreeting: isSystem,
       }])
+      setLastNewId(replyId)
     } catch (e) {
+      const errId = Date.now()
       setMessages(m => [...m, {
         role: 'assistant', content: `(歪头) 好像出了点问题... ${e.message}`,
-        id: Date.now(), isError: true,
+        id: errId, isError: true,
       }])
+      setLastNewId(errId)
     }
     setLoading(false)
   }
 
-  // 没有 API Key — 显示配置界面
   if (!apiKey) {
     return (
       <div style={{ padding: '24px 16px', maxWidth: 420, margin: '0 auto' }}>
         <BuddyCard buddy={buddy} name={name} compact />
         <div style={{ marginTop: 24, padding: 16, background: '#0f1117', borderRadius: 12, border: '1px solid #374151' }}>
           <div style={{ color: '#eab308', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.85rem', marginBottom: 12 }}>
-            ⚠ 需要 Anthropic API Key 才能对话
+            {'!'} 需要 Anthropic API Key 才能对话
           </div>
           <div style={{ color: '#6b7280', fontSize: '0.78rem', marginBottom: 12, lineHeight: 1.6 }}>
             Key 仅存在你的浏览器本地，不经过任何服务器。
@@ -129,68 +171,76 @@ export default function ChatPage({ buddy, name }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 60px)', maxWidth: 600, margin: '0 auto' }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      height: 'calc(100vh - 52px)', height: 'calc(100dvh - 52px)',
+      maxWidth: 600, margin: '0 auto',
+    }}>
       {/* 顶部信息栏 */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '10px 16px', borderBottom: '1px solid #1f2937',
-        background: '#0a0a0f',
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '8px 12px', borderBottom: '1px solid #1f2937',
+        background: '#0a0a0f', flexShrink: 0,
       }}>
-        <BuddySprite buddy={buddy} size="sm" animated />
-        <div>
-          <div style={{ color: rc, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '0.9rem' }}>
+        <div style={{ flexShrink: 0 }}>
+          <BuddySprite buddy={buddy} size="sm" animated />
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{
+            color: rc, fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 700, fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
             {name}
           </div>
-          <div style={{ color: '#4b5563', fontSize: '0.72rem', fontFamily: "'JetBrains Mono', monospace" }}>
+          <div style={{
+            color: '#4b5563', fontSize: '0.72rem',
+            fontFamily: "'JetBrains Mono', monospace",
+          }}>
             {buddy.rarity} {buddy.species}
           </div>
         </div>
         <button onClick={() => setShowCard(s => !s)}
-          style={{ marginLeft: 'auto', ...bStyle('#374151'), padding: '4px 10px', fontSize: '0.75rem', width: 'auto' }}>
-          {showCard ? '隐藏卡片' : '查看卡片'}
+          style={{
+            ...bStyle('#374151'), padding: '4px 8px',
+            fontSize: '0.72rem', width: 'auto', flexShrink: 0,
+          }}>
+          {showCard ? '隐藏' : '卡片'}
         </button>
       </div>
 
       {showCard && (
-        <div style={{ padding: 12, borderBottom: '1px solid #1f2937' }}>
+        <div style={{ padding: 12, borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
           <BuddyCard buddy={buddy} name={name} compact />
         </div>
       )}
 
       {/* 消息列表 */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{
+        flex: 1, overflowY: 'auto', padding: '12px 12px',
+        display: 'flex', flexDirection: 'column', gap: 12,
+        WebkitOverflowScrolling: 'touch',
+      }}>
         {messages.map(msg => (
-          <div key={msg.id} style={{
-            display: 'flex',
-            flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
-            alignItems: 'flex-end', gap: 8,
-          }}>
-            {msg.role === 'assistant' && (
-              <BuddySprite buddy={buddy} size="sm" animated={false} />
-            )}
-            <div style={{
-              maxWidth: '72%',
-              background: msg.role === 'user' ? '#1e3a5f' : '#0f1117',
-              border: `1px solid ${msg.role === 'user' ? '#1d4ed844' : rc + '33'}`,
-              borderRadius: msg.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-              padding: '8px 12px',
-              color: msg.isError ? '#ef4444' : '#e5e7eb',
-              fontSize: '0.88rem',
-              lineHeight: 1.6,
-            }}>
-              {msg.content}
-            </div>
-          </div>
+          <ChatBubble
+            key={msg.id}
+            msg={msg}
+            buddy={buddy}
+            rc={rc}
+            isNew={msg.id === lastNewId}
+          />
         ))}
         {loading && (
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-            <BuddySprite buddy={buddy} size="sm" animated />
+            <div style={{ flexShrink: 0 }}>
+              <BuddySprite buddy={buddy} size="sm" animated />
+            </div>
             <div style={{
               background: '#0f1117', border: `1px solid ${rc}33`,
               borderRadius: '12px 12px 12px 2px', padding: '8px 14px',
               color: '#6b7280', fontSize: '0.85rem',
             }}>
-              <span style={{ animation: 'pulse 1s infinite' }}>···</span>
+              <span style={{ animation: 'pulse 1s infinite' }}>...</span>
             </div>
           </div>
         )}
@@ -199,8 +249,10 @@ export default function ChatPage({ buddy, name }) {
 
       {/* 输入框 */}
       <div style={{
-        display: 'flex', gap: 8, padding: '10px 16px',
+        display: 'flex', gap: 8, padding: '8px 12px',
         borderTop: '1px solid #1f2937', background: '#0a0a0f',
+        flexShrink: 0,
+        paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
       }}>
         <input
           value={input}
@@ -208,11 +260,11 @@ export default function ChatPage({ buddy, name }) {
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
           placeholder={`和 ${name} 说点什么...`}
           disabled={loading}
-          style={{ ...iStyle, flex: 1 }}
+          style={{ ...iStyle, flex: 1, minWidth: 0 }}
         />
         <button onClick={() => sendMessage(input)} disabled={!input.trim() || loading}
-          style={{ ...bStyle(rc), padding: '8px 16px', width: 'auto', flexShrink: 0 }}>
-          发送
+          style={{ ...bStyle(rc), padding: '8px 14px', width: 'auto', flexShrink: 0 }}>
+          {'>'}
         </button>
       </div>
     </div>
