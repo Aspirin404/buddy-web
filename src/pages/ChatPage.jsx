@@ -138,7 +138,7 @@ export default function ChatPage({ buddy, name }) {
     let accumulatedText = ''
 
     try {
-      await fetchEventSource(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+      await fetchEventSource(`${SUPABASE_URL}/functions/v1/ai-chat-ab062132157f`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
