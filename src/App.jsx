@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { loadBuddy, clearBuddy } from './buddy/gacha.js'
 import RollPage from './pages/RollPage.jsx'
 import ChatPage from './pages/ChatPage.jsx'
@@ -13,6 +13,13 @@ const NAV = [
 export default function App() {
   const [tab,   setTab]   = useState(0)
   const [saved, setSaved] = useState(() => loadBuddy())
+  const [chatKey, setChatKey] = useState(0)
+
+  // Force ChatPage remount when switching to chat tab
+  const goToChat = useCallback((t) => {
+    if (t === 1) setChatKey(k => k + 1)
+    setTab(t)
+  }, [])
 
   function onHatched() {
     setSaved(loadBuddy())
@@ -67,7 +74,7 @@ export default function App() {
             return (
               <button
                 key={i}
-                onClick={() => !disabled && setTab(i)}
+                onClick={() => !disabled && goToChat(i)}
                 style={{
                   background: tab === i ? '#22d3ee22' : 'transparent',
                   border: tab === i ? '1px solid #22d3ee44' : '1px solid transparent',
@@ -110,7 +117,7 @@ export default function App() {
             : <RollPage onHatched={onHatched} />
         )}
         {tab === 1 && hasBuddy && (
-          <ChatPage buddy={saved.buddy} name={saved.name} />
+          <ChatPage key={chatKey} buddy={saved.buddy} name={saved.name} />
         )}
         {tab === 2 && hasBuddy && (
           <div style={{

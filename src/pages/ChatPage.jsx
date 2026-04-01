@@ -101,8 +101,10 @@ export default function ChatPage({ buddy, name }) {
   const systemPrompt = buildSystemPrompt(buddy, name)
 
   // 初始打招呼
+  const greetedRef = useRef(false)
   useEffect(() => {
-    if (messages.length > 0) return
+    if (greetedRef.current || messages.length > 0) return
+    greetedRef.current = true
     sendToAI('用你的性格说一句开场白欢迎用户，1句话', true)
   }, [])
 
@@ -146,7 +148,7 @@ export default function ChatPage({ buddy, name }) {
         },
         body: JSON.stringify({
           messages: history,
-          model: 'openai/gpt-5.4',
+          model: 'moonshotai/kimi-k2.5',
           system: systemPrompt,
         }),
         signal: abortRef.current.signal,
