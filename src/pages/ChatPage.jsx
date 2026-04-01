@@ -150,7 +150,7 @@ export default function ChatPage({ buddy, name }) {
         },
         body: JSON.stringify({
           messages: history,
-          model: 'moonshotai/kimi-k2.5',
+          model: 'anthropic/claude-sonnet-4.5',
         }),
         signal: abortRef.current.signal,
 
