@@ -126,9 +126,11 @@ export default function ChatPage({ buddy, name }) {
     setError(null)
 
     const history = [
+      { role: 'user', content: systemPrompt },
+      { role: 'assistant', content: '明白，我会保持角色。' },
       ...messages.filter(m => !m.isGreeting).map(m => ({ role: m.role, content: m.content })),
-      ...(isSystem ? [{ role: 'user', content: text }] : [{ role: 'user', content: text }]),
-    ].slice(-12)
+      { role: 'user', content: text },
+    ].slice(-14)
 
     const assistantId = Date.now() + 1
     setMessages(m => [...m, {
@@ -149,7 +151,6 @@ export default function ChatPage({ buddy, name }) {
         body: JSON.stringify({
           messages: history,
           model: 'moonshotai/kimi-k2.5',
-          system: systemPrompt,
         }),
         signal: abortRef.current.signal,
 

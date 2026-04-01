@@ -16,24 +16,7 @@ serve(async (req) => {
       throw new Error("AI_API_TOKEN is not configured");
     }
 
-    const { messages, model, system } = await req.json();
-
-    // Claude Messages API format: system is a top-level parameter
-    const requestBody = {
-      model: model || "openai/gpt-5.4",
-      messages,
-      stream: true,
-      max_tokens: 200,
-    };
-
-    // Add system prompt as top-level parameter (Claude API format)
-    if (system) {
-      requestBody.system = system;
-    }
-
-    console.log("Calling AI API with model:", requestBody.model);
-    console.log("AI_API_TOKEN present:", !!AI_API_TOKEN);
-    console.log("Token prefix:", AI_API_TOKEN.substring(0, 10) + "...");
+    const { messages, model } = await req.json();
 
     const response = await fetch("https://api.enter.pro/code/api/v1/ai/messages", {
       method: "POST",
@@ -41,14 +24,15 @@ serve(async (req) => {
         Authorization: `Bearer ${AI_API_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        model: model || "anthropic/claude-sonnet-4.5",
+        messages,
+        stream: true,
+      }),
     });
-
-    console.log("AI API response status:", response.status);
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("AI API error response:", text);
       let errorMessage = "AI service error";
       let errorCode = "api_error";
 
@@ -80,7 +64,6 @@ serve(async (req) => {
       },
     });
   } catch (error) {
-    console.error("Edge function error:", error.message);
     const errorSSE = `event: error\ndata: ${JSON.stringify({
       type: "error",
       error: { type: "api_error", message: error.message }
